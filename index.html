@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>图文链接记录工具</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --card: rgba(255, 255, 255, 0.9);
+      --card-strong: #ffffff;
+      --line: #dfe7f3;
+      --text: #1f2937;
+      --muted: #667085;
+      --primary: #2563eb;
+      --primary-strong: #1d4ed8;
+      --success: #10b981;
+      --success-strong: #059669;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --shadow: 0 12px 30px rgba(37, 99, 235, 0.12);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background:
+        radial-gradient(circle at top left, rgba(96,165,250,0.14), transparent 28%),
+        radial-gradient(circle at bottom right, rgba(16,185,129,0.12), transparent 26%),
+        var(--bg);
+      color: var(--text);
+      font-family: "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+    }
+
+    body {
+      max-width: 1450px;
+      margin: 0 auto;
+      padding: 24px 18px 40px;
+    }
+
+    .topbar {
+      background: rgba(255,255,255,0.72);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(219,232,255,0.9);
+      box-shadow: var(--shadow);
+      border-radius: 22px;
+      padding: 18px 18px 16px;
+      margin-bottom: 18px;
+      position: sticky;
+      top: 14px;
+      z-index: 5;
+    }
+
+    .title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: clamp(1.5rem, 2vw, 2.2rem);
+      letter-spacing: 0.02em;
+    }
+
+    .tip-text {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.7;
+      margin: 0;
+    }
+
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    button {
+      border: none;
+      cursor: pointer;
+      transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+      font-size: 14px;
+      border-radius: 10px;
+      padding: 10px 16px;
+      font-weight: 600;
+      color: white;
+      box-shadow: 0 8px 20px rgba(37, 99, 235, 0.14);
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+    }
+
+    button:active { transform: translateY(0); }
+
+    #addRowBtn { background: linear-gradient(135deg, var(--primary), var(--primary-strong)); }
+    #addFiveBtn { background: linear-gradient(135deg, #7c3aed, #5b21b6); }
+    #exportBtn { background: linear-gradient(135deg, var(--success), var(--success-strong)); }
+    #exportHtmlBtn { background: linear-gradient(135deg, #f59e0b, #d97706); }
+    #clearAllBtn { background: linear-gradient(135deg, #ef4444, #dc2626); }
+
+    #listContainer {
+      display: grid;
+      gap: 16px;
+    }
+
+    .row-item {
+      background: var(--card);
+      border: 1px solid rgba(223, 231, 243, 0.95);
+      border-radius: var(--radius);
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+      padding: 18px;
+      display: grid;
+      grid-template-columns: minmax(220px, 1.2fr) minmax(220px, 1.1fr) minmax(220px, 1fr);
+      gap: 18px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .row-item::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 5px;
+      background: linear-gradient(180deg, #60a5fa, #a78bfa);
+      opacity: 0.9;
+    }
+
+    .row-item.dragging {
+      opacity: 0.5;
+      border: 2px dashed #93c5fd;
+    }
+
+    .drag-handle {
+      position: absolute;
+      top: 10px;
+      right: 12px;
+      color: var(--muted);
+      cursor: grab;
+      user-select: none;
+      padding: 6px 8px;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.6);
+      border: 1px solid var(--line);
+      font-size: 12px;
+    }
+
+    .col-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      color: #374151;
+      margin-bottom: 8px;
+    }
+
+    .mini-tag {
+      font-size: 11px;
+      border-radius: 999px;
+      background: rgba(37,99,235,0.08);
+      color: var(--primary);
+      padding: 4px 8px;
+      font-weight: 700;
+    }
+
+    input[type="text"],
+    textarea,
+    select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: rgba(255,255,255,0.85);
+      padding: 10px 12px;
+      font-size: 14px;
+      color: var(--text);
+      transition: border-color 0.18s ease, box-shadow 0.18s ease;
+      resize: vertical;
+    }
+
+    input[type="text"]:focus,
+    textarea:focus,
+    select:focus {
+      outline: none;
+      border-color: rgba(37, 99, 235, 0.7);
+      box-shadow: 0 0 0 4px rgba(59,130,246,0.12);
+    }
+
+    textarea {
+      min-height: 120px;
+      line-height: 1.6;
+      font-size: 15px;
+    }
+
+    input[type="file"] {
+      width: 100%;
+      background: #f8fafc;
+      border: 1px dashed var(--line);
+      border-radius: 10px;
+      padding: 10px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .img-area {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: linear-gradient(180deg, #fafcff, #f7fafc);
+      padding: 10px;
+      min-height: 123px;
+    }
+
+    .img-preview {
+      margin-top: 10px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 96px;
+      border-radius: 10px;
+      background: linear-gradient(180deg, #f8fafc, #eef2ff);
+      border: 1px dashed rgba(148,163,184,0.7);
+      overflow: hidden;
+    }
+
+    .img-preview img {
+      display: block;
+      max-width: 100%;
+      max-height: 200px;
+      object-fit: contain;
+      border-radius: 8px;
+    }
+
+    .placeholder {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+      text-align: center;
+      padding: 12px;
+    }
+
+    .video-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .video-actions .small-btn {
+      flex: 1;
+      padding: 10px 12px;
+      border-radius: 9px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .small-btn.primary { background: linear-gradient(135deg, var(--primary), var(--primary-strong)); }
+    .small-btn.success { background: linear-gradient(135deg, #14b8a6, #0f766e); }
+    .small-btn.danger { background: linear-gradient(135deg, #ef4444, #dc2626); }
+
+    .delete-row-btn {
+      width: 100%;
+      margin-top: 12px;
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      padding: 12px 10px;
+    }
+
+    .empty-state {
+      padding: 28px 12px;
+      text-align: center;
+      color: var(--muted);
+      border: 1px dashed var(--line);
+      border-radius: 16px;
+      background: rgba(255,255,255,0.58);
+    }
+
+    @media (max-width: 900px) {
+      .row-item {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="title-row">
+      <h2>图文链接记录工具</h2>
+    </div>
+    <p class="tip-text">支持文字、图片、视频链路记录；支持本地图片上传、网络图片链接、导出备份、拖拽排序、批量新增。</p>
+    <div class="btn-group">
+      <button id="addRowBtn" onclick="addNewRow()">➕ 新增 1 行</button>
+      <button id="addFiveBtn" onclick="addRows(5)">➕ 批量新增 5 行</button>
+      <button id="exportBtn" onclick="exportDataAsTxt()">📥 导出 TXT</button>
+      <button id="exportHtmlBtn" onclick="exportDataAsHtml()">📤 导出 HTML</button>
+      <button id="clearAllBtn" onclick="clearAllRows()">🗑 清空全部</button>
+    </div>
+  </div>
+
+  <div id="listContainer"></div>
+
+  <script>
+    const STORAGE_KEY = 'recordData_v2';
+    const container = document.getElementById('listContainer');
+    let recordList = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+
+    function saveToLocal() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(recordList));
+    }
+
+    function addNewRow() {
+      recordList.push({
+        text: '',
+        img: '',
+        imgUrl: '',
+        videoLink: '',
+        title: ''
+      });
+      saveToLocal();
+      renderAllRows();
+    }
+
+    function addRows(n) {
+      const count = Number(n) || 1;
+      for (let i = 0; i < count; i++) {
+        recordList.push({
+          text: '',
+          img: '',
+          imgUrl: '',
+          videoLink: '',
+          title: ''
+        });
+      }
+      saveToLocal();
+      renderAllRows();
+    }
+
+    function deleteRow(index) {
+      recordList.splice(index, 1);
+      saveToLocal();
+      renderAllRows();
+    }
+
+    function clearAllRows() {
+      if (!recordList.length) return;
+      if (!window.confirm('确定清空全部记录吗？')) return;
+      recordList = [];
+      saveToLocal();
+      renderAllRows();
+    }
+
+    function handleTextChange(index, value) {
+      recordList[index].text = value;
+      saveToLocal();
+    }
+
+    function handleTitleChange(index, value) {
+      recordList[index].title = value;
+      saveToLocal();
+    }
+
+    function handleImgUrlChange(index, value) {
+      recordList[index].imgUrl = value;
+      recordList[index].img = value;
+      saveToLocal();
+      renderAllRows();
+    }
+
+    function handleVideoChange(index, value) {
+      recordList[index].videoLink = value;
+      saveToLocal();
+    }
+
+    function uploadImage(index, inputDom) {
+      const file = inputDom.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        recordList[index].img = e.target.result;
+        recordList[index].imgUrl = '';
+        saveToLocal();
+        renderAllRows();
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function openVideo(index) {
+      const url = recordList[index].videoLink?.trim();
+      if (!url) {
+        alert('请先填写视频链接');
+        return;
+      }
+      window.open(url, '_blank');
+    }
+
+    function exportDataAsTxt() {
+      if (!recordList.length) {
+        alert('暂无数据可导出');
+        return;
+      }
+      let text = '===== 图文链接记录 =====\n\n';
+      recordList.forEach((row, i) => {
+        text += `【第 ${i + 1} 行】\n`;
+        text += `标题：${row.title || '未命名'}\n`;
+        text += `文字：${row.text || '无'}\n`;
+        text += `图片：${row.imgUrl || row.img || '无'}\n`;
+        text += `视频：${row.videoLink || '无'}\n`;
+        text += '----------------------------\n\n';
+      });
+
+      const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = '图文链接记录备份.txt';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function exportDataAsHtml() {
+      if (!recordList.length) {
+        alert('暂无数据可导出');
+        return;
+      }
+
+      const cardsHtml = recordList.map((row, index) => {
+        const title = escapeHtml(row.title || `记录 ${index + 1}`);
+        const text = escapeHtml(row.text || '无文字内容');
+        const imgHtml = row.img || row.imgUrl
+          ? `<div class="card-image"><img src="${escapeAttr(row.img || row.imgUrl)}" alt="${title}" /></div>`
+          : '<div class="card-image placeholder">无图片</div>';
+        const videoHtml = row.videoLink
+          ? `<p class="video-link"><a href="${escapeAttr(row.videoLink)}" target="_blank">打开视频链接</a></p>`
+          : '<p class="video-link">无视频链接</p>';
+
+        return `
+          <div class="export-card">
+            <h3>${title}</h3>
+            <p>${text}</p>
+            ${imgHtml}
+            ${videoHtml}
+          </div>
+        `;
+      }).join('');
+
+      const html = `
+        <!DOCTYPE html>
+        <html lang="zh-CN">
+        <head>
+          <meta charset="UTF-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+          <title>导出的图文链接记录</title>
+          <style>
+            body { font-family: "PingFang SC","Microsoft YaHei",sans-serif; background:#f4f7fb; margin:0; padding:24px; }
+            .wrap { max-width:1100px; margin:0 auto; }
+            .export-card { background:#fff; border:1px solid #e5e7eb; border-radius:18px; padding:20px; margin-bottom:18px; box-shadow:0 10px 24px rgba(15,23,42,0.05); }
+            h3 { margin:0 0 10px; font-size:22px; }
+            p { color:#374151; line-height:1.8; }
+            .card-image { margin-top:16px; }
+            .card-image img { max-width:100%; border-radius:12px; display:block; }
+            .placeholder { color:#667085; padding:18px; border:1px dashed #dbe3ef; border-radius:10px; background:#f8fafc; }
+            .video-link { margin-top:12px; }
+            a { color:#2563eb; text-decoration:none; }
+          </style>
+        </head>
+        <body>
+          <div class="wrap">${cardsHtml}</div>
+        </body>
+        </html>
+      `;
+
+      const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = '图文链接记录.html';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function escapeAttr(str) {
+      return escapeHtml(str);
+    }
+
+    function renderAllRows() {
+      if (!recordList.length) {
+        container.innerHTML = '<div class="empty-state">暂无记录，点击上方按钮新增内容</div>';
+        return;
+      }
+
+      container.innerHTML = recordList.map((item, index) => `
+        <div class="row-item" draggable="true" data-index="${index}" aria-label="记录项 ${index + 1}">
+          <div class="drag-handle" title="拖拽调整顺序">☰ 拖拽</div>
+          <div>
+            <div class="col-title">
+              <span>📝 文字内容</span>
+              <span class="mini-tag">#${index + 1}</span>
+            </div>
+            <input type="text" placeholder="输入标题（可选）" value="${escapeAttr(item.title || '')}" oninput="handleTitleChange(${index}, this.value)">
+            <div style="height:10px"></div>
+            <textarea placeholder="输入文字描述" oninput="handleTextChange(${index}, this.value)">${escapeHtml(item.text || '')}</textarea>
+          </div>
+
+          <div>
+            <div class="col-title"><span>🖼 图片</span></div>
+            <div class="img-area">
+              <input type="file" accept="image/*" onchange="uploadImage(${index}, this)">
+              <div style="height:10px"></div>
+              <input type="text" placeholder="或者粘贴图片网络链接" value="${escapeAttr(item.imgUrl || '')}" oninput="handleImgUrlChange(${index}, this.value)">
+              <div class="img-preview">
+                ${item.img || item.imgUrl
+                  ? `<img src="${escapeAttr(item.img || item.imgUrl)}" alt="图片预览" />`
+                  : '<div class="placeholder">图片预览区域<br/>支持本地上传或网络链接</div>'}
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div class="col-title"><span>🔗 视频链接</span></div>
+            <input type="text" placeholder="粘贴视频网址" value="${escapeAttr(item.videoLink || '')}" oninput="handleVideoChange(${index}, this.value)">
+            <div class="video-actions">
+              <button class="small-btn primary" onclick="openVideo(${index})">打开</button>
+              <button class="small-btn success" onclick="copyLink(${index})">复制</button>
+            </div>
+            <button class="delete-row-btn" onclick="deleteRow(${index})">删除本行</button>
+          </div>
+        </div>
+      `).join('');
+
+      bindDragAndDrop();
+    }
+
+    function copyLink(index) {
+      const url = recordList[index].videoLink?.trim();
+      if (!url) {
+        alert('请先填写视频链接');
+        return;
+      }
+      navigator.clipboard.writeText(url).then(() => {
+        alert('视频链接已复制到剪贴板');
+      }).catch(() => {
+        alert('复制失败，请手动复制');
+      });
+    }
+
+    function bindDragAndDrop() {
+      const rows = [...document.querySelectorAll('.row-item')];
+      rows.forEach((row) => {
+        row.addEventListener('dragstart', function () {
+          row.classList.add('dragging');
+          row.dataset.dragging = 'true';
+        });
+
+        row.addEventListener('dragend', function () {
+          row.classList.remove('dragging');
+          row.dataset.dragging = 'false';
+        });
+
+        row.addEventListener('dragover', function (event) {
+          event.preventDefault();
+        });
+
+        row.addEventListener('drop', function (event) {
+          event.preventDefault();
+          const draggedIndex = Number(document.querySelector('.row-item.dragging')?.dataset.index || -1);
+          const targetIndex = Number(row.dataset.index);
+          if (draggedIndex < 0 || draggedIndex === targetIndex) return;
+
+          const draggedItem = recordList.splice(draggedIndex, 1)[0];
+          recordList.splice(targetIndex, 0, draggedItem);
+          saveToLocal();
+          renderAllRows();
+        });
+      });
+    }
+
+    if (!recordList.length) {
+      recordList = [{ text: '', img: '', imgUrl: '', videoLink: '', title: '' }];
+    }
+    renderAllRows();
+  </script>
+</body>
+</html>
